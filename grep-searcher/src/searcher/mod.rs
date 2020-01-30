@@ -157,6 +157,10 @@ pub struct Config {
     encoding: Option<Encoding>,
     /// Whether to do automatic transcoding based on a BOM or not.
     bom_sniffing: bool,
+    /// Whether to exclude tests from search
+    exclude_tests: bool,
+    /// Whether to search only in tests
+    only_tests: bool,
 }
 
 impl Default for Config {
@@ -174,6 +178,8 @@ impl Default for Config {
             multi_line: false,
             encoding: None,
             bom_sniffing: true,
+            exclude_tests: false,
+            only_tests: false,
         }
     }
 }
@@ -543,6 +549,22 @@ impl SearcherBuilder {
         self.config.bom_sniffing = yes;
         self
     }
+
+    /// Whether to exclude tests from search.
+    ///
+    /// When in this mode, multi line search will be always enabled.
+    pub fn exclude_tests(&mut self, yes: bool) -> &mut SearcherBuilder {
+        self.config.exclude_tests = yes;
+        self
+    }
+
+    /// Whether to search only in tests.
+    ///
+    /// When in this mode, multi line search will be always enabled.
+    pub fn only_tests(&mut self, yes: bool) -> &mut SearcherBuilder {
+        self.config.only_tests = yes;
+        self
+    }
 }
 
 /// A searcher executes searches over a haystack and writes results to a caller
@@ -807,7 +829,13 @@ impl Searcher {
     /// searcher has been configured to execute a search that can report
     /// matches over multiple lines, but where the matcher guarantees that it
     /// will never produce a match over multiple lines.
+    ///
+    /// If "exclude_tests" or "only_tests" modes are selected, the multi-line
+    /// strategy will always be chosen.
     pub fn multi_line_with_matcher<M: Matcher>(&self, matcher: M) -> bool {
+        if self.exclude_tests() || self.only_tests() {
+            return true;
+        }
         if !self.multi_line() {
             return false;
         }
@@ -846,6 +874,18 @@ impl Searcher {
     #[inline]
     pub fn passthru(&self) -> bool {
         self.config.passthru
+    }
+
+    /// Returns true if and only if the searcher is configured to exclude tests.
+    #[inline]
+    pub fn exclude_tests(&self) -> bool {
+        self.config.exclude_tests
+    }
+
+    /// Returns true if and only if the searcher is configured to include only tests.
+    #[inline]
+    pub fn only_tests(&self) -> bool {
+        self.config.only_tests
     }
 
     /// Fill the buffer for use with multi-line searching from the given file.

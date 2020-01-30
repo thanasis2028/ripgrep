@@ -626,7 +626,9 @@ impl ArgMatches {
             .multi_line(true)
             .unicode(true)
             .octal(false)
-            .word(self.is_present("word-regexp"));
+            .word(self.is_present("word-regexp"))
+            .exclude_tests(self.is_present("excludetests"))
+            .only_tests(self.is_present("onlytests"));
         if self.is_present("multiline") {
             builder.dot_matches_new_line(self.is_present("multiline-dotall"));
             if self.is_present("crlf") {
@@ -803,7 +805,9 @@ impl ArgMatches {
             .after_context(ctx_after)
             .passthru(self.is_present("passthru"))
             .memory_map(self.mmap_choice(paths))
-            .binary_detection(self.binary_detection());
+            .binary_detection(self.binary_detection())
+            .exclude_tests(self.is_present("excludetests"))
+            .only_tests(self.is_present("onlytests"));
         match self.encoding()? {
             EncodingMode::Some(enc) => {
                 builder.encoding(Some(enc));

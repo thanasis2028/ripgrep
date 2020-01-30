@@ -625,6 +625,8 @@ pub fn all_args_and_flags() -> Vec<RGArg> {
     flag_vimgrep(&mut args);
     flag_with_filename(&mut args);
     flag_word_regexp(&mut args);
+    flag_excludetests(&mut args);
+    flag_onlytests(&mut args);
     args
 }
 
@@ -2410,5 +2412,73 @@ This overrides the --line-regexp flag.
     let arg = RGArg::switch("word-regexp").short("w")
         .help(SHORT).long_help(LONG)
         .overrides("line-regexp");
+    args.push(arg);
+}
+
+fn flag_excludetests(args: &mut Vec<RGArg>) {
+    const SHORT: &str = "Enable matching only outside of tests.";
+    const LONG: &str = long!("\
+Enable matching only outside of tests.
+
+When exclude-tests mode is enabled, ripgrep will exclude rust code tests from
+search. This option will also ALWAYS enable multiline mode.
+
+**WARNING**: Because of how the underlying regex engine works, multiline
+searches may be slower than normal line-oriented searches, and they may also
+use more memory. In particular, when multiline mode is enabled, ripgrep
+requires that each file it searches is laid out contiguously in memory
+(either by reading it onto the heap or by memory-mapping it). Things that
+cannot be memory-mapped (such as stdin) will be consumed until EOF before
+searching can begin. In general, ripgrep will only do these things when
+necessary. Specifically, if the --multiline flag is provided but the regex
+does not contain patterns that would match '\\n' characters, then ripgrep
+will automatically avoid reading each file into memory before searching it.
+Nevertheless, if you only care about matches spanning at most one line, then it
+is always better to disable multiline mode.
+
+This flag can be disabled with --no-excludetests.
+");
+    let arg = RGArg::switch("excludetests")
+        .help(SHORT).long_help(LONG)
+        .overrides("no-excludetests");
+    args.push(arg);
+
+    let arg = RGArg::switch("no-excludetests")
+        .hidden()
+        .overrides("excludetests");
+    args.push(arg);
+}
+
+fn flag_onlytests(args: &mut Vec<RGArg>) {
+    const SHORT: &str = "Enable matching only in tests.";
+    const LONG: &str = long!("\
+Enable matching only in tests.
+
+When only-tests mode is enabled, ripgrep will include only rust code tests in
+search. This option will also ALWAYS enable multiline mode.
+
+**WARNING**: Because of how the underlying regex engine works, multiline
+searches may be slower than normal line-oriented searches, and they may also
+use more memory. In particular, when multiline mode is enabled, ripgrep
+requires that each file it searches is laid out contiguously in memory
+(either by reading it onto the heap or by memory-mapping it). Things that
+cannot be memory-mapped (such as stdin) will be consumed until EOF before
+searching can begin. In general, ripgrep will only do these things when
+necessary. Specifically, if the --multiline flag is provided but the regex
+does not contain patterns that would match '\\n' characters, then ripgrep
+will automatically avoid reading each file into memory before searching it.
+Nevertheless, if you only care about matches spanning at most one line, then it
+is always better to disable multiline mode.
+
+This flag can be disabled with --no-onlytests.
+");
+    let arg = RGArg::switch("onlytests")
+        .help(SHORT).long_help(LONG)
+        .overrides("no-onlytests");
+    args.push(arg);
+
+    let arg = RGArg::switch("no-onlytests")
+        .hidden()
+        .overrides("onlytests");
     args.push(arg);
 }
