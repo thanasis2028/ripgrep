@@ -36,6 +36,8 @@ pub struct Config {
     pub line_terminator: Option<LineTerminator>,
     pub crlf: bool,
     pub word: bool,
+    pub exclude_tests: bool,
+    pub only_tests: bool,
 }
 
 impl Default for Config {
@@ -57,6 +59,8 @@ impl Default for Config {
             line_terminator: None,
             crlf: false,
             word: false,
+            exclude_tests: false,
+            only_tests: false,
         }
     }
 }

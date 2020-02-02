@@ -343,6 +343,18 @@ impl RegexMatcherBuilder {
         self.config.word = yes;
         self
     }
+
+    /// Exclude tests from search.
+    pub fn exclude_tests(&mut self, yes: bool) -> &mut RegexMatcherBuilder {
+        self.config.exclude_tests = yes;
+        self
+    }
+
+    /// Include only tests from search
+    pub fn only_tests(&mut self, yes: bool) -> &mut RegexMatcherBuilder {
+        self.config.only_tests = yes;
+        self
+    }
 }
 
 /// An implementation of the `Matcher` trait using Rust's standard regex
@@ -406,6 +418,10 @@ enum RegexMatcherImpl {
     /// `Matcher` to encapsulate its use of capture groups to make them
     /// invisible to the caller.
     Word(WordMatcher),
+    /// A matcher that excludes tests.
+    ExcludeTests(ExcludeTestsMatcher),
+    /// A matcher for tests only.
+    OnlyTests(OnlyTestsMatcher)
 }
 
 impl RegexMatcherImpl {
@@ -416,6 +432,10 @@ impl RegexMatcherImpl {
             Ok(RegexMatcherImpl::Word(WordMatcher::new(expr)?))
         } else if expr.needs_crlf_stripped() {
             Ok(RegexMatcherImpl::CRLF(CRLFMatcher::new(expr)?))
+        } else if expr.config().exclude_tests {
+            Ok(RegexMatcherImpl::ExcludeTests(ExcludeTestsMatcher::new(expr)?))
+        } else if expr.config().only_tests {
+            Ok(RegexMatcherImpl::OnlyTests(OnlyTestsMatcher::new(expr)?))
         } else {
             if let Some(lits) = expr.alternation_literals() {
                 if lits.len() >= 40 {
@@ -434,6 +454,8 @@ impl RegexMatcherImpl {
             RegexMatcherImpl::CRLF(ref x) => x.regex().to_string(),
             RegexMatcherImpl::MultiLiteral(_) => "<N/A>".to_string(),
             RegexMatcherImpl::Standard(ref x) => x.regex.to_string(),
+            RegexMatcherImpl::ExcludeTests(ref x) => x.regex.to_string(),
+            RegexMatcherImpl::OnlyTests(ref x) => x.regex.to_string(),
         }
     }
 }
@@ -456,6 +478,8 @@ impl Matcher for RegexMatcher {
             MultiLiteral(ref m) => m.find_at(haystack, at),
             CRLF(ref m) => m.find_at(haystack, at),
             Word(ref m) => m.find_at(haystack, at),
+            ExcludeTests(ref m) => m.find_at(haystack, at),
+            OnlyTests(ref m) => m.find_at(haystack, at),
         }
     }
 
@@ -466,6 +490,8 @@ impl Matcher for RegexMatcher {
             MultiLiteral(ref m) => m.new_captures(),
             CRLF(ref m) => m.new_captures(),
             Word(ref m) => m.new_captures(),
+            ExcludeTests(ref m) => m.new_captures(),
+            OnlyTests(ref m) => m.new_captures(),
         }
     }
 
@@ -476,6 +502,8 @@ impl Matcher for RegexMatcher {
             MultiLiteral(ref m) => m.capture_count(),
             CRLF(ref m) => m.capture_count(),
             Word(ref m) => m.capture_count(),
+            ExcludeTests(ref m) => m.capture_count(),
+            OnlyTests(ref m) => m.capture_count(),
         }
     }
 
@@ -486,6 +514,8 @@ impl Matcher for RegexMatcher {
             MultiLiteral(ref m) => m.capture_index(name),
             CRLF(ref m) => m.capture_index(name),
             Word(ref m) => m.capture_index(name),
+            ExcludeTests(ref m) => m.capture_index(name),
+            OnlyTests(ref m) => m.capture_index(name),
         }
     }
 
@@ -496,6 +526,8 @@ impl Matcher for RegexMatcher {
             MultiLiteral(ref m) => m.find(haystack),
             CRLF(ref m) => m.find(haystack),
             Word(ref m) => m.find(haystack),
+            ExcludeTests(ref m) => m.find(haystack),
+            OnlyTests(ref m) => m.find(haystack),
         }
     }
 
@@ -512,6 +544,8 @@ impl Matcher for RegexMatcher {
             MultiLiteral(ref m) => m.find_iter(haystack, matched),
             CRLF(ref m) => m.find_iter(haystack, matched),
             Word(ref m) => m.find_iter(haystack, matched),
+            ExcludeTests(ref m) => m.find_iter(haystack, matched),
+            OnlyTests(ref m) => m.find_iter(haystack, matched),
         }
     }
 
@@ -528,6 +562,8 @@ impl Matcher for RegexMatcher {
             MultiLiteral(ref m) => m.try_find_iter(haystack, matched),
             CRLF(ref m) => m.try_find_iter(haystack, matched),
             Word(ref m) => m.try_find_iter(haystack, matched),
+            ExcludeTests(ref m) => m.try_find_iter(haystack, matched),
+            OnlyTests(ref m) => m.try_find_iter(haystack, matched),
         }
     }
 
@@ -542,6 +578,8 @@ impl Matcher for RegexMatcher {
             MultiLiteral(ref m) => m.captures(haystack, caps),
             CRLF(ref m) => m.captures(haystack, caps),
             Word(ref m) => m.captures(haystack, caps),
+            ExcludeTests(ref m) => m.captures(haystack, caps),
+            OnlyTests(ref m) => m.captures(haystack, caps),
         }
     }
 
@@ -559,6 +597,8 @@ impl Matcher for RegexMatcher {
             MultiLiteral(ref m) => m.captures_iter(haystack, caps, matched),
             CRLF(ref m) => m.captures_iter(haystack, caps, matched),
             Word(ref m) => m.captures_iter(haystack, caps, matched),
+            ExcludeTests(ref m) => m.captures_iter(haystack, caps, matched),
+            OnlyTests(ref m) => m.captures_iter(haystack, caps, matched),
         }
     }
 
@@ -578,6 +618,8 @@ impl Matcher for RegexMatcher {
             }
             CRLF(ref m) => m.try_captures_iter(haystack, caps, matched),
             Word(ref m) => m.try_captures_iter(haystack, caps, matched),
+            ExcludeTests(ref m) => m.try_captures_iter(haystack, caps, matched),
+            OnlyTests(ref m) => m.try_captures_iter(haystack, caps, matched),
         }
     }
 
@@ -593,6 +635,8 @@ impl Matcher for RegexMatcher {
             MultiLiteral(ref m) => m.captures_at(haystack, at, caps),
             CRLF(ref m) => m.captures_at(haystack, at, caps),
             Word(ref m) => m.captures_at(haystack, at, caps),
+            ExcludeTests(ref m) => m.captures_at(haystack, at, caps),
+            OnlyTests(ref m) => m.captures_at(haystack, at, caps),
         }
     }
 
@@ -610,6 +654,8 @@ impl Matcher for RegexMatcher {
             MultiLiteral(ref m) => m.replace(haystack, dst, append),
             CRLF(ref m) => m.replace(haystack, dst, append),
             Word(ref m) => m.replace(haystack, dst, append),
+            ExcludeTests(ref m) => m.replace(haystack, dst, append),
+            OnlyTests(ref m) => m.replace(haystack, dst, append),
         }
     }
 
@@ -636,6 +682,12 @@ impl Matcher for RegexMatcher {
             Word(ref m) => {
                 m.replace_with_captures(haystack, caps, dst, append)
             }
+            ExcludeTests(ref m) => {
+                m.replace_with_captures(haystack, caps, dst, append)
+            }
+            OnlyTests(ref m) => {
+                m.replace_with_captures(haystack, caps, dst, append)
+            }
         }
     }
 
@@ -646,6 +698,8 @@ impl Matcher for RegexMatcher {
             MultiLiteral(ref m) => m.is_match(haystack),
             CRLF(ref m) => m.is_match(haystack),
             Word(ref m) => m.is_match(haystack),
+            ExcludeTests(ref m) => m.is_match(haystack),
+            OnlyTests(ref m) => m.is_match(haystack),
         }
     }
 
@@ -660,6 +714,8 @@ impl Matcher for RegexMatcher {
             MultiLiteral(ref m) => m.is_match_at(haystack, at),
             CRLF(ref m) => m.is_match_at(haystack, at),
             Word(ref m) => m.is_match_at(haystack, at),
+            ExcludeTests(ref m) => m.is_match_at(haystack, at),
+            OnlyTests(ref m) => m.is_match_at(haystack, at),
         }
     }
 
@@ -673,6 +729,8 @@ impl Matcher for RegexMatcher {
             MultiLiteral(ref m) => m.shortest_match(haystack),
             CRLF(ref m) => m.shortest_match(haystack),
             Word(ref m) => m.shortest_match(haystack),
+            ExcludeTests(ref m) => m.shortest_match(haystack),
+            OnlyTests(ref m) => m.shortest_match(haystack),
         }
     }
 
@@ -687,6 +745,8 @@ impl Matcher for RegexMatcher {
             MultiLiteral(ref m) => m.shortest_match_at(haystack, at),
             CRLF(ref m) => m.shortest_match_at(haystack, at),
             Word(ref m) => m.shortest_match_at(haystack, at),
+            ExcludeTests(ref m) => m.shortest_match_at(haystack, at),
+            OnlyTests(ref m) => m.shortest_match_at(haystack, at),
         }
     }
 
@@ -710,6 +770,249 @@ impl Matcher for RegexMatcher {
                 self.shortest_match(haystack)?.map(LineMatchKind::Confirmed)
             }
         })
+    }
+}
+
+fn find_test_area(haystack: &[u8], at: usize) -> Option<Match> {
+    let regex = Regex::new(r"(#\[\s*cfg\s*\(\s*test\s*\)\s*])|(#\[\s*test\s*])").unwrap();
+    match regex.find_at(haystack, at) {
+        Some(found) => {
+            let mut braces = 0;
+            for i in found.end()..haystack.len() {
+                if haystack[i] == '{' as u8 {
+                    braces += 1;
+                } else if haystack[i] == '}' as u8 {
+                    braces -= 1;
+                    if braces <= 0 {
+                        return Some(Match::new(found.start(), i + 1))
+                    }
+                } else if haystack[i] == ';' as u8 && braces == 0 {
+                    return Some(Match::new(found.start(), i + 1))
+                }
+            }
+            Some(Match::new(found.start(), haystack.len()))
+        }
+        None => {
+            None
+        }
+    }
+}
+
+/// The implementation of the regex matcher that excludes tests.
+#[derive(Clone, Debug)]
+struct ExcludeTestsMatcher {
+    /// The regular expression compiled from the pattern provided by the
+    /// caller.
+    regex: Regex,
+    /// A map from capture group name to its corresponding index.
+    names: HashMap<String, usize>,
+}
+
+impl ExcludeTestsMatcher {
+    fn new(expr: &ConfiguredHIR) -> Result<ExcludeTestsMatcher, Error> {
+        let regex = expr.regex()?;
+        let mut names = HashMap::new();
+        for (i, optional_name) in regex.capture_names().enumerate() {
+            if let Some(name) = optional_name {
+                names.insert(name.to_string(), i);
+            }
+        }
+        Ok(ExcludeTestsMatcher { regex, names })
+    }
+}
+
+impl Matcher for ExcludeTestsMatcher {
+    type Captures = RegexCaptures;
+    type Error = NoError;
+
+    fn find_at(
+        &self,
+        haystack: &[u8],
+        at: usize,
+    ) -> Result<Option<Match>, NoError> {
+        match self.regex
+            .find_at(haystack, at)
+            .map(|m| Match::new(m.start(), m.end())) {
+            Some(found) => {
+                let mut find_test_start = at;
+                loop {
+                    match find_test_area(haystack, find_test_start) {
+                        Some(test_area) => {
+                            if test_area.end() <= found.start() {
+                                find_test_start = test_area.end();
+                            } else if test_area.start() <= found.start() && test_area.end() >= found.end() {
+                                return self.find_at(haystack, test_area.end());
+                            } else {
+                                return Ok(Some(found));
+                            }
+                        }
+                        None => {
+                            return Ok(Some(found));
+                        }
+                    }
+                }
+            }
+            None => {
+                Ok(None)
+            }
+        }
+    }
+
+    fn new_captures(&self) -> Result<RegexCaptures, NoError> {
+        Ok(RegexCaptures::new(self.regex.capture_locations()))
+    }
+
+    fn capture_count(&self) -> usize {
+        self.regex.captures_len()
+    }
+
+    fn capture_index(&self, name: &str) -> Option<usize> {
+        self.names.get(name).map(|i| *i)
+    }
+
+    fn try_find_iter<F, E>(
+        &self,
+        haystack: &[u8],
+        mut matched: F,
+    ) -> Result<Result<(), E>, NoError>
+    where F: FnMut(Match) -> Result<bool, E>
+    {
+        for m in self.regex.find_iter(haystack) {
+            match matched(Match::new(m.start(), m.end())) {
+                Ok(true) => continue,
+                Ok(false) => return Ok(Ok(())),
+                Err(err) => return Ok(Err(err)),
+            }
+        }
+        Ok(Ok(()))
+    }
+
+    fn captures_at(
+        &self,
+        haystack: &[u8],
+        at: usize,
+        caps: &mut RegexCaptures,
+    ) -> Result<bool, NoError> {
+        Ok(self.regex.captures_read_at(
+                &mut caps.locations_mut(), haystack, at,
+        ).is_some())
+    }
+
+    fn shortest_match_at(
+        &self,
+        haystack: &[u8],
+        at: usize,
+    ) -> Result<Option<usize>, NoError> {
+        Ok(self.regex.shortest_match_at(haystack, at))
+    }
+}
+
+/// The implementation of the regex matcher that includes only tests.
+#[derive(Clone, Debug)]
+struct OnlyTestsMatcher {
+    /// The regular expression compiled from the pattern provided by the
+    /// caller.
+    regex: Regex,
+    /// A map from capture group name to its corresponding index.
+    names: HashMap<String, usize>,
+}
+
+impl OnlyTestsMatcher {
+    fn new(expr: &ConfiguredHIR) -> Result<OnlyTestsMatcher, Error> {
+        let regex = expr.regex()?;
+        let mut names = HashMap::new();
+        for (i, optional_name) in regex.capture_names().enumerate() {
+            if let Some(name) = optional_name {
+                names.insert(name.to_string(), i);
+            }
+        }
+        Ok(OnlyTestsMatcher { regex, names })
+    }
+}
+
+impl Matcher for OnlyTestsMatcher {
+    type Captures = RegexCaptures;
+    type Error = NoError;
+
+    fn find_at(
+        &self,
+        haystack: &[u8],
+        at: usize,
+    ) -> Result<Option<Match>, NoError> {
+        match self.regex
+            .find_at(haystack, at)
+            .map(|m| Match::new(m.start(), m.end())) {
+            Some(found) => {
+                let mut find_test_start = at;
+                loop {
+                    match find_test_area(haystack, find_test_start) {
+                        Some(test_area) => {
+                            if test_area.end() <= found.start() {
+                                find_test_start = test_area.end();
+                            } else if test_area.start() <= found.start() && test_area.end() >= found.end() {
+                                return Ok(Some(found));
+                            } else {
+                                return self.find_at(haystack, test_area.start());
+                            }
+                        }
+                        None => {
+                            return Ok(None);
+                        }
+                    }
+                }
+            }
+            None => {
+                Ok(None)
+            }
+        }
+    }
+
+    fn new_captures(&self) -> Result<RegexCaptures, NoError> {
+        Ok(RegexCaptures::new(self.regex.capture_locations()))
+    }
+
+    fn capture_count(&self) -> usize {
+        self.regex.captures_len()
+    }
+
+    fn capture_index(&self, name: &str) -> Option<usize> {
+        self.names.get(name).map(|i| *i)
+    }
+
+    fn try_find_iter<F, E>(
+        &self,
+        haystack: &[u8],
+        mut matched: F,
+    ) -> Result<Result<(), E>, NoError>
+    where F: FnMut(Match) -> Result<bool, E>
+    {
+        for m in self.regex.find_iter(haystack) {
+            match matched(Match::new(m.start(), m.end())) {
+                Ok(true) => continue,
+                Ok(false) => return Ok(Ok(())),
+                Err(err) => return Ok(Err(err)),
+            }
+        }
+        Ok(Ok(()))
+    }
+
+    fn captures_at(
+        &self,
+        haystack: &[u8],
+        at: usize,
+        caps: &mut RegexCaptures,
+    ) -> Result<bool, NoError> {
+        Ok(self.regex.captures_read_at(
+                &mut caps.locations_mut(), haystack, at,
+        ).is_some())
+    }
+
+    fn shortest_match_at(
+        &self,
+        haystack: &[u8],
+        at: usize,
+    ) -> Result<Option<usize>, NoError> {
+        Ok(self.regex.shortest_match_at(haystack, at))
     }
 }
 

@@ -656,7 +656,9 @@ impl ArgMatches {
             .multi_line(true)
             .unicode(true)
             .octal(false)
-            .word(self.is_present("word-regexp"));
+            .word(self.is_present("word-regexp"))
+            .exclude_tests(self.is_present("excludetests"))
+            .only_tests(self.is_present("onlytests"));
         if self.is_present("multiline") {
             builder.dot_matches_new_line(self.is_present("multiline-dotall"));
             if self.is_present("crlf") {
@@ -835,6 +837,8 @@ impl ArgMatches {
             .invert_match(self.is_present("invert-match"))
             .line_number(self.line_number(paths))
             .multi_line(self.is_present("multiline"))
+            .exclude_tests(self.is_present("excludetests"))
+            .only_tests(self.is_present("onlytests"))
             .before_context(ctx_before)
             .after_context(ctx_after)
             .passthru(self.is_present("passthru"))

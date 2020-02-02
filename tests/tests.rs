@@ -18,5 +18,7 @@ mod json;
 mod misc;
 // Tests for ripgrep's multiline search support.
 mod multiline;
+// Tests for excludetests and onlytests features
+mod excludetests_onlytests;
 // Regression tests.
 mod regression;
